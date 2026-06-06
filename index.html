@@ -8,7 +8,6 @@
         body { margin: 0; background: #1a1a1a; display: flex; justify-content: center; align-items: center; height: 100vh; font-family: 'Segoe UI', sans-serif; user-select: none; overflow: hidden; }
         .game-container { position: relative; box-shadow: 0 15px 35px rgba(0,0,0,0.6); border-radius: 8px; overflow: hidden; width: 95vw; max-width: 1200px; height: calc(95vw * 600 / 900); max-height: 90vh; }
         @media (min-aspect-ratio: 9/6) { .game-container { height: 90vh; width: calc(90vh * 900 / 600); } }
-        /* Đã đổi background canvas thành màu đen để khi load ảnh không bị chói màu cũ */
         canvas { background: #000; display: block; width: 100%; height: 100%; }
         
         .rotate-warning { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #111; color: white; z-index: 9999; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 20px; }
@@ -74,8 +73,8 @@ pauseMusic.loop = true;
 pauseMusic.volume = 0.4;
 
 const gameOverMusic = new Audio('audio/gameover.mp3');
-gameOverMusic.loop = true;
-gameOverMusic.volume = 0.8;
+gameOverMusic.loop = false;
+gameOverMusic.volume = 0.6;
 
 function khichayWeb() {
     if (gameState === 'MENU') {
@@ -92,10 +91,11 @@ let gameState = 'MENU', gameSpeed = 1, globalFrame = 0, sun = 250, score = 0;
 const gridW = 100, gridH = 100, rows = 5, cols = 9, uiH = 100;
 let plants = [], zombies = [], projectiles = [], suns = [], frameCount = 0, selectedPlant = null;
 
+// Thêm cooldown: 300 (5 giây x 60 frame/giây) và lastPlantedFrame để tính thời gian hồi chiêu
 const plantConfig = {
-    sunflower: { cost: 50, hp: 120, icon: '🌻', imgKey: 'sunflower' },
-    peashooter: { cost: 100, hp: 150, icon: '🌱', imgKey: 'peashooter' },
-    wallnut: { cost: 50, hp: 666, icon: '🍞', imgKey: 'wallnut' }
+    sunflower: { cost: 50, hp: 100, icon: '🌻', imgKey: 'sunflower', cooldown: 300, lastPlantedFrame: -300 },
+    peashooter: { cost: 100, hp: 150, icon: '🌱', imgKey: 'peashooter', cooldown: 300, lastPlantedFrame: -300 },
+    wallnut: { cost: 50, hp: 2000, icon: '🍞', imgKey: 'wallnut', cooldown: 300, lastPlantedFrame: -300 }
 };
 const plantCards = ['sunflower', 'peashooter', 'wallnut']; 
 
@@ -106,11 +106,9 @@ const imgs = {}, imgStatus = {};
     imgs[key].onload = () => imgStatus[key] = true;
 });
 
-// --- THÊM ẢNH NỀN SÂN CỎ VÀO ĐÂY ---
 imgs['bg_yard'] = new Image();
 imgs['bg_yard'].src = 'images/bg_yard.jpg'; 
 imgs['bg_yard'].onload = () => imgStatus['bg_yard'] = true;
-// -----------------------------------
 
 function drawHealthBar(x, y, width, currentHp, maxHp) {
     ctx.fillStyle = 'red'; ctx.fillRect(x, y, width, 4);
@@ -208,8 +206,12 @@ class Sun {
 }
 
 function resetGameData() {
-    sun = 175; score = 0; plants = []; zombies = []; projectiles = []; suns = []; 
+    sun = 250; score = 0; plants = []; zombies = []; projectiles = []; suns = []; 
     frameCount = 0; selectedPlant = null; gameSpeed = 1;
+    // Reset thời gian hồi chiêu khi chơi lại
+    plantCards.forEach(type => {
+        plantConfig[type].lastPlantedFrame = -plantConfig[type].cooldown;
+    });
 }
 
 function switchState(state, overlays) {
@@ -269,7 +271,6 @@ canvas.addEventListener('click', (e) => {
     const mx = (e.clientX - rect.left) * (canvas.width / rect.width);
     const my = (e.clientY - rect.top) * (canvas.height / rect.height);
 
-    // XỬ LÝ CLICK VÀO 2 NÚT TRÊN CANVAS (Ngăn chọn thẻ cây đè lên bên dưới)
     if (my < uiH) {
         if (mx >= 710 && mx <= 790 && my >= 10 && my <= 90) {
             toggleSpeed();
@@ -286,7 +287,12 @@ canvas.addEventListener('click', (e) => {
     if (my < uiH) {
         let cardIdx = Math.floor((mx - 310) / 100);
         if (cardIdx >= 0 && cardIdx < plantCards.length && mx < 310 + cardIdx * 100 + 80) {
-            selectedPlant = plantCards[cardIdx];
+            let type = plantCards[cardIdx];
+            let pCfg = plantConfig[type];
+            // CHỈ CHO PHÉP CHỌN NẾU ĐÃ HẾT COOLDOWN
+            if (frameCount - pCfg.lastPlantedFrame >= pCfg.cooldown) {
+                selectedPlant = type;
+            }
         } 
         else if (mx >= 610 && mx <= 690) {
             selectedPlant = 'shovel';
@@ -307,6 +313,8 @@ canvas.addEventListener('click', (e) => {
                 if (sun >= plantConfig[selectedPlant].cost) {
                     plants.push(new Plant(gx, gy, selectedPlant));
                     sun -= plantConfig[selectedPlant].cost;
+                    // BẮT ĐẦU COOLDOWN SAU KHI ĐẶT CÂY THÀNH CÔNG
+                    plantConfig[selectedPlant].lastPlantedFrame = frameCount;
                     selectedPlant = null;
                 }
             }
@@ -340,9 +348,6 @@ function updateGameLogic() {
 function renderGame() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    // ==========================================
-    // 1. VẼ ẢNH NỀN SÂN CỎ VÀO KHU VỰC CHƠI (Bên dưới UI)
-    // ==========================================
     if (imgStatus['bg_yard']) {
         ctx.drawImage(imgs['bg_yard'], 0, uiH, canvas.width, canvas.height - uiH);
     } else {
@@ -350,7 +355,6 @@ function renderGame() {
         ctx.fillRect(0, uiH, canvas.width, canvas.height - uiH);
     }
     
-    // 2. VẼ THANH UI BÊN TRÊN
     ctx.fillStyle = '#4a3319'; 
     ctx.fillRect(0, 0, canvas.width, uiH);
     
@@ -364,6 +368,8 @@ function renderGame() {
     plantCards.forEach((type, i) => {
         let x = 310 + i * 100;
         let pCfg = plantConfig[type];
+        let framesSincePlanted = frameCount - pCfg.lastPlantedFrame;
+        let isReady = framesSincePlanted >= pCfg.cooldown;
         
         ctx.fillStyle = selectedPlant === type ? '#bbf' : '#8c6339';
         ctx.fillRect(x, 10, 80, 80);
@@ -373,6 +379,14 @@ function renderGame() {
         else { ctx.fillStyle = 'white'; ctx.font = "30px Arial"; ctx.fillText(pCfg.icon, x + 40, 42); }
         
         ctx.fillStyle = 'white'; ctx.font = "bold 14px Arial"; ctx.fillText(pCfg.cost, x + 40, 80);
+
+        // HIỂN THỊ HIỆU ỨNG COOLDOWN BẰNG LỚP PHỦ MÀU ĐEN MỜ DẦN TỪ TRÊN XUỐNG
+        if (!isReady) {
+            let cooldownRatio = 1 - (framesSincePlanted / pCfg.cooldown);
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+            // Nhân chiều cao lớp phủ với cooldownRatio để tạo hiệu ứng thanh hồi chiêu rút dần xuống
+            ctx.fillRect(x, 10, 80, 80 * cooldownRatio);
+        }
     });
 
     let shovelX = 610; 
@@ -386,15 +400,11 @@ function renderGame() {
     }
     ctx.fillStyle = 'white'; ctx.font = "bold 16px Arial"; ctx.fillText("XÓA", shovelX + 40, 80);
 
-    // ==========================================
-    // VẼ 2 NÚT ĐIỀU KHIỂN TRỰC TIẾP LÊN CANVAS (Bên phải ô Xóa)
-    // ==========================================
     ctx.lineWidth = 2;
     ctx.strokeStyle = '#332211';
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
 
-    // Nút Tốc độ (Tọa độ x: 710, y: 10, rộng: 80, cao: 80)
     ctx.fillStyle = '#8c6339';
     ctx.fillRect(710, 10, 80, 80);
     ctx.strokeRect(710, 10, 80, 80);
@@ -404,7 +414,6 @@ function renderGame() {
     ctx.font = "bold 18px Arial";
     ctx.fillText(`${gameSpeed}x`, 750, 62);
 
-    // Nút Tạm dừng (Tọa độ x: 800, y: 10, rộng: 80, cao: 80)
     ctx.fillStyle = '#8c6339';
     ctx.fillRect(800, 10, 80, 80);
     ctx.strokeRect(800, 10, 80, 80);
@@ -412,7 +421,6 @@ function renderGame() {
     ctx.font = "bold 13px Arial";
     ctx.fillText("TẠM", 840, 35);
     ctx.fillText("DỪNG", 840, 62);
-    // ==========================================
 
     ctx.strokeStyle = 'rgba(255,255,255,0.12)';
     for(let i=0; i<rows; i++) for(let j=0; j<cols; j++) ctx.strokeRect(j*gridW, i*gridH + uiH, gridW, gridH);
