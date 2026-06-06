@@ -93,9 +93,9 @@ let plants = [], zombies = [], projectiles = [], suns = [], frameCount = 0, sele
 
 // Thêm cooldown: 300 (5 giây x 60 frame/giây) và lastPlantedFrame để tính thời gian hồi chiêu
 const plantConfig = {
-    sunflower: { cost: 50, hp: 100, icon: '🌻', imgKey: 'sunflower', cooldown: 300, lastPlantedFrame: -300 },
-    peashooter: { cost: 100, hp: 150, icon: '🌱', imgKey: 'peashooter', cooldown: 300, lastPlantedFrame: -300 },
-    wallnut: { cost: 50, hp: 2000, icon: '🍞', imgKey: 'wallnut', cooldown: 300, lastPlantedFrame: -300 }
+    sunflower: { cost: 50, hp: 60, icon: '🌻', imgKey: 'sunflower', cooldown: 300, lastPlantedFrame: -300 },
+    peashooter: { cost: 100, hp: 100, icon: '🌱', imgKey: 'peashooter', cooldown: 300, lastPlantedFrame: -300 },
+    wallnut: { cost: 50, hp: 700, icon: '🍞', imgKey: 'wallnut', cooldown: 300, lastPlantedFrame: -300 }
 };
 const plantCards = ['sunflower', 'peashooter', 'wallnut']; 
 
@@ -206,7 +206,7 @@ class Sun {
 }
 
 function resetGameData() {
-    sun = 250; score = 0; plants = []; zombies = []; projectiles = []; suns = []; 
+    sun = 200; score = 0; plants = []; zombies = []; projectiles = []; suns = []; 
     frameCount = 0; selectedPlant = null; gameSpeed = 1;
     // Reset thời gian hồi chiêu khi chơi lại
     plantCards.forEach(type => {
