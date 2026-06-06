@@ -65,6 +65,11 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
+// --- THÊM NHẠC NỀN ---
+const bgMusic = new Audio('audio/bgm.mp3');
+bgMusic.loop = true; // Lặp lại nhạc khi hết
+bgMusic.volume = 0.5; // Điều chỉnh âm lượng (0.0 đến 1.0)
+
 let gameState = 'MENU', gameSpeed = 1, globalFrame = 0, sun = 250, score = 0;
 const gridW = 100, gridH = 100, rows = 5, cols = 9, uiH = 100;
 let plants = [], zombies = [], projectiles = [], suns = [], frameCount = 0, selectedPlant = null;
@@ -137,6 +142,7 @@ class Zombie {
             gameState = 'GAMEOVER';
             document.getElementById('gameOverOverlay').style.display = 'flex';
             document.getElementById('inGameBar').style.display = 'none';
+            bgMusic.pause(); // Dừng nhạc khi thua game
         }
     }
     draw() {
@@ -185,9 +191,32 @@ function switchState(state, overlays) {
     });
 }
 
-function startGame() { resetGameData(); switchState('PLAYING', { inGameBar: 'flex' }); }
-function backToMenu() { resetGameData(); switchState('MENU', { mainMenu: 'flex' }); }
-function togglePause() { switchState(gameState === 'PLAYING' ? 'PAUSED' : 'PLAYING', { inGameBar: 'flex', pauseOverlay: gameState === 'PLAYING' ? 'flex' : 'none' }); }
+function startGame() { 
+    resetGameData(); 
+    switchState('PLAYING', { inGameBar: 'flex' }); 
+    
+    // Phát nhạc khi bắt đầu chơi
+    bgMusic.currentTime = 0;
+    bgMusic.play().catch(e => console.log("Trình duyệt chặn tự động phát nhạc. Hãy tương tác với game."));
+}
+
+function backToMenu() { 
+    resetGameData(); 
+    switchState('MENU', { mainMenu: 'flex' }); 
+    bgMusic.pause(); // Dừng nhạc khi về Menu
+}
+
+function togglePause() { 
+    let newState = gameState === 'PLAYING' ? 'PAUSED' : 'PLAYING';
+    switchState(newState, { inGameBar: 'flex', pauseOverlay: newState === 'PAUSED' ? 'flex' : 'none' }); 
+    
+    // Tạm dừng/Tiếp tục nhạc
+    if (newState === 'PAUSED') {
+        bgMusic.pause();
+    } else {
+        bgMusic.play();
+    }
+}
 
 function toggleSpeed() {
     gameSpeed = gameSpeed === 1 ? 2 : (gameSpeed === 2 ? 0.5 : 1);
@@ -263,13 +292,12 @@ function renderGame() {
     
     ctx.fillStyle = '#4a3319'; ctx.fillRect(0, 0, canvas.width, uiH);
     
-    // GỘP CHUNG HIỂN THỊ ĐIỂM SỐ VÀ TÀI NGUYÊN SANG GÓC TRÁI
     ctx.fillStyle = '#ffd700'; 
     ctx.font = "bold 20px Arial"; 
     ctx.textAlign = "left"; 
     ctx.textBaseline = "middle";
     ctx.fillText(`☀️ Điểm 0 môn văn: ${sun}`, 20, 35);
-    ctx.fillText(`🏆 Điểm: ${score}`, 20, 70); // Đưa điểm xuống dòng dưới
+    ctx.fillText(`🏆 Điểm: ${score}`, 20, 70);
     
     plantCards.forEach((type, i) => {
         let x = 310 + i * 100;
