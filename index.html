@@ -74,8 +74,8 @@ pauseMusic.loop = true;
 pauseMusic.volume = 0.4;
 
 const gameOverMusic = new Audio('audio/gameover.mp3');
-gameOverMusic.loop = false;
-gameOverMusic.volume = 0.6;
+gameOverMusic.loop = true;
+gameOverMusic.volume = 0.8;
 
 function khichayWeb() {
     if (gameState === 'MENU') {
@@ -95,7 +95,7 @@ let plants = [], zombies = [], projectiles = [], suns = [], frameCount = 0, sele
 const plantConfig = {
     sunflower: { cost: 50, hp: 100, icon: '🌻', imgKey: 'sunflower' },
     peashooter: { cost: 100, hp: 150, icon: '🌱', imgKey: 'peashooter' },
-    wallnut: { cost: 50, hp: 300, icon: '🍞', imgKey: 'wallnut' }
+    wallnut: { cost: 50, hp: 500, icon: '🍞', imgKey: 'wallnut' }
 };
 const plantCards = ['sunflower', 'peashooter', 'wallnut']; 
 
